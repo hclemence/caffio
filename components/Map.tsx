@@ -25,7 +25,7 @@ const MapboxExample = () => {
     mapRef.current.addControl(
       new MapboxGeocoder({
         accessToken: mapboxgl.accessToken,
-        // @ts-ignore - mapboxgl types are incompatible with the expected type
+        // @ts-expect-error - mapboxgl types are incompatible with the expected type
         mapboxgl: mapboxgl
       })
     );
