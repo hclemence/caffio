@@ -25,7 +25,8 @@ const MapboxExample = () => {
     mapRef.current.addControl(
       new MapboxGeocoder({
         accessToken: mapboxgl.accessToken,
-        mapboxgl: mapboxgl as any
+        // @ts-ignore - mapboxgl types are incompatible with the expected type
+        mapboxgl: mapboxgl
       })
     );
     mapRef.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
