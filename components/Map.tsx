@@ -10,11 +10,12 @@ interface MapboxExampleProps {
   address?: AddressType;
   setAddress?: (address: AddressType) => void;
   cafes: CafeHybrid;
+  mapRef: React.RefObject<mapboxgl.Map | null>;
 }
 
-const MapboxExample = ({ address, setAddress, cafes }: MapboxExampleProps) => {
+const MapboxExample = ({ address, setAddress, cafes, mapRef }: MapboxExampleProps) => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  // mapRef is now passed as a prop
 
   const markersRef = useRef<mapboxgl.Marker[]>([]);
 
@@ -60,46 +61,102 @@ const MapboxExample = ({ address, setAddress, cafes }: MapboxExampleProps) => {
   useEffect(() => {
     mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
+  if (!mapRef) return;
+
+  // Try to get user's location for initial center
+  const defaultCenter: [number, number] = [-79.4512, 43.6568];
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userCenter: [number, number] = [position.coords.longitude, position.coords.latitude];
+        mapRef.current = new mapboxgl.Map({
+          container: mapContainerRef.current!,
+          style: "mapbox://styles/hclemence/cmf1d9fji000n01s8g7wpcfd9",
+          center: userCenter,
+          zoom: 13,
+        });
+        mapRef.current?.addControl(new mapboxgl.NavigationControl(), "top-right");
+        const geolocateControl = new mapboxgl.GeolocateControl({
+          positionOptions: { enableHighAccuracy: true },
+          trackUserLocation: true,
+          showUserLocation: true,
+        });
+        mapRef.current?.addControl(geolocateControl);
+        mapRef.current?.on("moveend", () => {
+          if (mapRef.current && setAddress) {
+            const center = mapRef.current.getCenter();
+            reverseGeocode(center.lng, center.lat);
+          }
+        });
+        mapRef.current?.on("geolocate", (e: any) => {
+          if (setAddress && e.coords) {
+            const { longitude, latitude } = e.coords;
+            reverseGeocode(longitude, latitude);
+          }
+        });
+      },
+      () => {
+        // If user denies location, fallback to default
+        mapRef.current = new mapboxgl.Map({
+          container: mapContainerRef.current!,
+          style: "mapbox://styles/hclemence/cmf1d9fji000n01s8g7wpcfd9",
+          center: defaultCenter,
+          zoom: 13,
+        });
+        mapRef.current?.addControl(new mapboxgl.NavigationControl(), "top-right");
+        const geolocateControl = new mapboxgl.GeolocateControl({
+          positionOptions: { enableHighAccuracy: true },
+          trackUserLocation: true,
+          showUserLocation: true,
+        });
+        mapRef.current?.addControl(geolocateControl);
+        mapRef.current?.on("moveend", () => {
+          if (mapRef.current && setAddress) {
+            const center = mapRef.current.getCenter();
+            reverseGeocode(center.lng, center.lat);
+          }
+        });
+        mapRef.current?.on("geolocate", (e: any) => {
+          if (setAddress && e.coords) {
+            const { longitude, latitude } = e.coords;
+            reverseGeocode(longitude, latitude);
+          }
+        });
+      }
+    );
+  } else {
+    // If geolocation is not available
     mapRef.current = new mapboxgl.Map({
       container: mapContainerRef.current!,
       style: "mapbox://styles/hclemence/cmf1d9fji000n01s8g7wpcfd9",
-      center: [-79.4512, 43.6568],
+      center: defaultCenter,
       zoom: 13,
     });
-
-    mapRef.current.addControl(new mapboxgl.NavigationControl(), "top-right");
-
-    // Use GeolocateControl with a callback
+    mapRef.current?.addControl(new mapboxgl.NavigationControl(), "top-right");
     const geolocateControl = new mapboxgl.GeolocateControl({
-      positionOptions: {
-        enableHighAccuracy: true,
-      },
+      positionOptions: { enableHighAccuracy: true },
       trackUserLocation: true,
       showUserLocation: true,
     });
-
-    mapRef.current.addControl(geolocateControl);
-
-    // Listen for the map move end event to update the address
-    mapRef.current.on("moveend", () => {
+    mapRef.current?.addControl(geolocateControl);
+    mapRef.current?.on("moveend", () => {
       if (mapRef.current && setAddress) {
         const center = mapRef.current.getCenter();
         reverseGeocode(center.lng, center.lat);
       }
     });
-
-    mapRef.current.on("geolocate", (e: any) => {
+    mapRef.current?.on("geolocate", (e: any) => {
       if (setAddress && e.coords) {
         const { longitude, latitude } = e.coords;
         reverseGeocode(longitude, latitude);
       }
     });
-
+  }
     return () => mapRef.current?.remove();
-  }, [setAddress]);
+  }, [setAddress, mapRef]);
 
   useEffect(() => {
-    if (!mapRef.current || cafes.array.length === 0) return;
+  if (!mapRef || !mapRef.current || cafes.array.length === 0) return;
 
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = [];
@@ -134,7 +191,7 @@ const MapboxExample = ({ address, setAddress, cafes }: MapboxExampleProps) => {
         )
         .setMaxWidth("300px");
 
-      const marker = new mapboxgl.Marker({ color: "#a5be00" })
+      const marker = new mapboxgl.Marker({ color: "#FFD151" })
         .setLngLat([cafe.longitude, cafe.latitude])
         .setPopup(popup)
         .addTo(mapRef.current!);

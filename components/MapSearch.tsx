@@ -1,6 +1,6 @@
 "use client";
 import { useSearchBoxCore } from "@mapbox/search-js-react";
-
+import type { SearchBoxSuggestion } from "@mapbox/search-js-core";
 import {
   Command,
   CommandEmpty,
@@ -27,74 +27,6 @@ export interface AddressType {
   lng: number;
 }
 
-export type SearchBoxSuggestionContext = {
-  country?: {
-    id: string;
-    name: string;
-    country_code: string;
-    country_code_alpha_3: string;
-  };
-  region?: {
-    id: string;
-    name: string;
-    region_code: string;
-    region_code_full: string;
-  };
-  postcode?: {
-    id: string;
-    name: string;
-  };
-  district?: {
-    id: string;
-    name: string;
-  };
-  place?: {
-    id: string;
-    name: string;
-  };
-  locality?: {
-    id: string;
-    name: string;
-  };
-  neighborhood?: {
-    id: string;
-    name: string;
-  };
-  address?: {
-    id: string;
-    name: string;
-    address_number: string;
-    street_name: string;
-  };
-  street?: {
-    id: string;
-    name: string;
-  };
-};
-
-export type SearchBoxSuggestion = {
-  added_distance?: number;
-  added_time?: number;
-  address?: string;
-  brand?: string;
-  brand_id?: string;
-  context?: SearchBoxSuggestionContext;
-  distance?: number;
-  eta?: number;
-  external_ids?: Record<string, string>;
-  feature_type?: string;
-  full_address?: string;
-  language?: string;
-  maki?: string;
-  mapbox_id: string;
-  metadata?: any;
-  name: string;
-  name_preferred?: string;
-  place_formatted?: string;
-  poi_category?: string[];
-  poi_category_ids?: string[];
-};
-
 interface AddressAutoCompleteProps {
   address: AddressType;
   setAddress: (address: AddressType) => void;
@@ -104,6 +36,7 @@ interface AddressAutoCompleteProps {
   showInlineError?: boolean;
   placeholder?: string;
   cafes: CafeHybrid;
+  flyTo: (lng: number, lat: number) => void;
 }
 
 const MapSearch: React.FC<AddressAutoCompleteProps> = ({
@@ -115,6 +48,7 @@ const MapSearch: React.FC<AddressAutoCompleteProps> = ({
   setSearchInput,
   placeholder,
   cafes,
+  flyTo,
 }) => {
   const searchBoxCore = useSearchBoxCore({
     accessToken: process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "",
@@ -127,20 +61,6 @@ const MapSearch: React.FC<AddressAutoCompleteProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!selectedPlaceId) return;
-    setIsLoading(true);
-    fetch(`/api/address/mock-place?placeId=${selectedPlaceId}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setAddressData(data);
-        setIsLoading(false);
-      })
-      .catch(() => setIsLoading(false));
-  }, [selectedPlaceId]);
-
-  const adrAddress = addressData?.data?.adrAddress;
-
-  useEffect(() => {
     if (addressData?.data.address) {
       setAddress(addressData.data.address as AddressType);
     }
@@ -148,20 +68,20 @@ const MapSearch: React.FC<AddressAutoCompleteProps> = ({
 
   return (
     <>
-
-        <AddressAutoCompleteInput
-          searchInput={searchInput}
-          longitude={address.lng}
-          latitude={address.lat}
-          setSearchInput={setSearchInput}
-          selectedPlaceId={selectedPlaceId}
-          setSelectedPlaceId={setSelectedPlaceId}
-          setIsOpenDialog={setIsOpen}
-          showInlineError={showInlineError}
-          placeholder={placeholder}
-          searchBoxCore={searchBoxCore}
-          cafes={cafes}
-        />
+      <AddressAutoCompleteInput
+        searchInput={searchInput}
+        longitude={address.lng}
+        latitude={address.lat}
+        setSearchInput={setSearchInput}
+        selectedPlaceId={selectedPlaceId}
+        setSelectedPlaceId={setSelectedPlaceId}
+        setIsOpenDialog={setIsOpen}
+        showInlineError={showInlineError}
+        placeholder={placeholder}
+        searchBoxCore={searchBoxCore}
+        cafes={cafes}
+        flyTo={flyTo}
+      />
     </>
   );
 };
@@ -179,7 +99,7 @@ interface CommonProps {
   searchBoxCore: ReturnType<typeof useSearchBoxCore>;
 }
 
-function AddressAutoCompleteInput(props: CommonProps & { cafes: CafeHybrid }) {
+function AddressAutoCompleteInput(props: CommonProps & { cafes: CafeHybrid; flyTo: (lng: number, lat: number) => void }) {
   const {
     setSelectedPlaceId,
     selectedPlaceId,
@@ -192,6 +112,7 @@ function AddressAutoCompleteInput(props: CommonProps & { cafes: CafeHybrid }) {
     placeholder,
     searchBoxCore,
     cafes,
+    flyTo,
   } = props;
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -237,7 +158,20 @@ function AddressAutoCompleteInput(props: CommonProps & { cafes: CafeHybrid }) {
       .catch(() => setAutocompleteLoading(false));
   }, [debouncedSearchInput]);
 
-  console.log("Cafes", cafes);
+  async function fetchCoordinates(
+    suggestion: SearchBoxSuggestion
+  ): Promise<[number, number] | null> {
+    try {
+      const data = await searchBoxCore.retrieve(suggestion, {
+        sessionToken: "your-session-token",
+      });
+      const coords = data?.features?.[0]?.geometry?.coordinates;
+      return Array.isArray(coords) ? (coords as [number, number]) : null;
+    } catch (error) {
+      console.error("Error retrieving coordinates:", error);
+      return null;
+    }
+  }
 
   const predictions = autocompleteData?.suggestions || [];
 
@@ -308,6 +242,11 @@ function AddressAutoCompleteInput(props: CommonProps & { cafes: CafeHybrid }) {
                                 : "");
                             setSearchInput(inputValue);
                             setSelectedPlaceId(suggestion.mapbox_id);
+                            fetchCoordinates(suggestion).then((coords) => {
+                              if (coords) {
+                                flyTo(coords[0], coords[1]);
+                              }
+                            });
                             setIsOpenDialog(true);
                             inputRef.current?.blur();
                           }}
