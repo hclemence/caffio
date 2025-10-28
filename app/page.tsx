@@ -9,6 +9,9 @@ import {
   QueryClientProvider,
 } from "@tanstack/react-query";
 import type { Cafe, CafeHybrid } from "../types/cafes";
+import HeaderBar from "@/components/HeaderBar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import CafeList from "@/components/CafeList";
 
 interface AddressType {
   address1: string;
@@ -75,6 +78,7 @@ export default function Home() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <HeaderBar />
       <main className="relative h-full w-full">
         <Map
           address={address}
@@ -82,7 +86,7 @@ export default function Home() {
           cafes={cafesHybrid}
           mapRef={mapRef}
         />
-        <div className="absolute top-4 left-4 z-20 w-[350px] pointer-events-auto">
+        <div className="absolute top-0 bottom-0 left-0 z-20 w-[350px] pointer-events-auto flex flex-col gap-4 min-h-0 p-4 bg-white shadow-[4px_0_16px_rgba(0,0,0,0.3)]">
           <MapSearch
             flyTo={flyTo}
             address={address}
@@ -93,11 +97,13 @@ export default function Home() {
             cafes={cafesHybrid}
             // You can also pass mapRef here if needed
           />
-          {/* <Card>
-            <CardContent>
-              <CafeList />
-            </CardContent>
-          </Card> */}
+          <div className="flex-1 overflow-y-auto  ">
+            <CafeList
+              cafes={cafesHybrid}
+              currentLat={address.lat}
+              currentLng={address.lng}
+            />
+          </div>
         </div>
       </main>
     </QueryClientProvider>

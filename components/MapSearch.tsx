@@ -158,28 +158,13 @@ function AddressAutoCompleteInput(props: CommonProps & { cafes: CafeHybrid; flyT
       .catch(() => setAutocompleteLoading(false));
   }, [debouncedSearchInput]);
 
-  async function fetchCoordinates(
-    suggestion: SearchBoxSuggestion
-  ): Promise<[number, number] | null> {
-    try {
-      const data = await searchBoxCore.retrieve(suggestion, {
-        sessionToken: "your-session-token",
-      });
-      const coords = data?.features?.[0]?.geometry?.coordinates;
-      return Array.isArray(coords) ? (coords as [number, number]) : null;
-    } catch (error) {
-      console.error("Error retrieving coordinates:", error);
-      return null;
-    }
-  }
-
   const predictions = autocompleteData?.suggestions || [];
 
   return (
     <Command
       shouldFilter={false}
       onKeyDown={handleKeyDown}
-      className="overflow-visible"
+      className="overflow-visible h-auto"
     >
       <div className="flex w-full items-center justify-between rounded-lg border bg-background ring-offset-background text-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 relative">
         <CommandPrimitive.Input
@@ -189,7 +174,7 @@ function AddressAutoCompleteInput(props: CommonProps & { cafes: CafeHybrid; flyT
           onBlur={close}
           onFocus={open}
           placeholder={placeholder || "Enter address"}
-          className="w-full p-3 rounded-lg outline-none pr-10"
+          className="w-full p-3 rounded-lg outline-none pr-10 h-auto"
         />
         <span className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
           {selectedPlaceId ? (
@@ -224,12 +209,6 @@ function AddressAutoCompleteInput(props: CommonProps & { cafes: CafeHybrid; flyT
                   <>
                     {predictions.map((suggestion: SearchBoxSuggestion) => {
                       const isCafe = !!cafes.byId[suggestion.mapbox_id];
-                      console.log("suggestion.mapbox_id", suggestion.mapbox_id);
-                      console.log("cafes.byId keys", Object.keys(cafes.byId));
-                      console.log(
-                        "cafes.byId[suggestion.mapbox_id]",
-                        cafes.byId[suggestion.mapbox_id]
-                      );
                       return (
                         <CommandPrimitive.Item
                           key={suggestion.mapbox_id}
@@ -241,12 +220,8 @@ function AddressAutoCompleteInput(props: CommonProps & { cafes: CafeHybrid; flyT
                                 ? ", " + suggestion.place_formatted
                                 : "");
                             setSearchInput(inputValue);
+                            
                             setSelectedPlaceId(suggestion.mapbox_id);
-                            fetchCoordinates(suggestion).then((coords) => {
-                              if (coords) {
-                                flyTo(coords[0], coords[1]);
-                              }
-                            });
                             setIsOpenDialog(true);
                             inputRef.current?.blur();
                           }}

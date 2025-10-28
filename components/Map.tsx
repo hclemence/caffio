@@ -182,6 +182,12 @@ const MapboxExample = ({ address, setAddress, cafes, mapRef }: MapboxExampleProp
     };
 
     cafes.array.forEach((cafe) => {
+      // skip cafes without coordinates
+      if (cafe.longitude == null || cafe.latitude == null) return;
+
+      const lng = cafe.longitude;
+      const lat = cafe.latitude;
+
       const popup = new mapboxgl.Popup({
         offset: popupOffsets,
         className: "my-class",
@@ -190,9 +196,8 @@ const MapboxExample = ({ address, setAddress, cafes, mapRef }: MapboxExampleProp
           `<h1 style="font-weight: bold; margin-bottom: 5px;">${cafe.name}</h1>`
         )
         .setMaxWidth("300px");
-
       const marker = new mapboxgl.Marker({ color: "#FFD151" })
-        .setLngLat([cafe.longitude, cafe.latitude])
+        .setLngLat([lng, lat])
         .setPopup(popup)
         .addTo(mapRef.current!);
 
